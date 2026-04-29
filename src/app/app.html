@@ -1,0 +1,296 @@
+<div class="min-h-screen bg-slate-950 text-slate-200 font-sans flex flex-col p-4 md:p-8 selection:bg-indigo-500/30 overflow-x-hidden">
+  
+  <!-- Header: EchoCore v2.4 Branding -->
+  <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 pb-6 border-b border-slate-800 gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-10 h-10 bg-indigo-600 rounded-sm transform rotate-45 flex items-center justify-center animate-pulse shadow-[0_0_15px_rgba(79,70,229,0.4)]">
+        <div class="w-4 h-4 bg-white"></div>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold tracking-tighter uppercase flex items-center gap-2 leading-none">
+          EchoCore <span class="text-indigo-400 font-mono text-xs">v2.4</span>
+        </h1>
+        <p class="text-[9px] text-slate-500 font-mono tracking-[4px] uppercase mt-1">Autonomous Home Intelligence</p>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-4 md:gap-8 text-[9px] font-mono uppercase tracking-widest text-slate-500">
+      <div class="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse"></span>
+        System Online
+      </div>
+      <div class="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
+        <mat-icon class="text-[12px] w-auto h-auto text-indigo-400">bolt</mat-icon>
+        Grid: {{ smartHome.totalEnergy() }}W
+      </div>
+      <div class="hidden sm:flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded border border-slate-800">
+        Latency: 12ms
+      </div>
+      <div class="text-slate-300 bg-indigo-500/10 px-3 py-1.5 rounded border border-indigo-500/20">
+        {{ currentDate | date:'MMM d, y | HH:mm' }}
+      </div>
+    </div>
+  </header>
+
+  <main class="grid grid-cols-1 md:grid-cols-12 gap-10 flex-1">
+    
+    <!-- Left Column: Device Topology -->
+    <section class="md:col-span-3 space-y-6">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+          <mat-icon class="text-xs">schema</mat-icon> Device Topology
+        </h2>
+        <button 
+          (click)="isEditMode.set(!isEditMode())"
+          class="text-[9px] px-2 py-0.5 rounded border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 transition-colors uppercase font-bold tracking-widest"
+        >
+          {{ isEditMode() ? 'SAVE' : 'EDIT' }}
+        </button>
+      </div>
+
+      <div class="space-y-1.5 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+        @for (device of smartHome.allDevices(); track device.id) {
+          <div 
+            #deviceItem
+            class="group bg-slate-900/30 border-l-2 p-3.5 transition-all duration-300 cursor-pointer flex justify-between items-center hover:bg-slate-900"
+            [class.border-indigo-500]="device.status === 'on' || device.status === 'unlocked' || device.status === 'open'"
+            [class.border-transparent]="device.status !== 'on' && device.status !== 'unlocked' && device.status !== 'open'"
+            [class.opacity-60]="device.status === 'off' || device.status === 'locked' || device.status === 'closed'"
+            [class.device-active-glow]="device.status === 'on' || device.status === 'unlocked' || device.status === 'open'"
+            [class.animate-status-change]="recentlyChangedDeviceIds().has(device.id)"
+            (click)="toggleDevice(device)"
+          >
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 flex items-center justify-center rounded bg-slate-800 text-indigo-400 transition-colors group-hover:bg-slate-700 relative">
+                @if (device.customIcon) {
+                  @if (device.customIcon.startsWith('http') || device.customIcon.includes('.') || device.customIcon.includes('/')) {
+                    <img [src]="device.customIcon" class="w-5 h-5 object-contain" alt="">
+                  } @else {
+                    <mat-icon class="text-base">{{device.customIcon}}</mat-icon>
+                  }
+                } @else {
+                  @if (device.type === 'light') { <mat-icon class="text-base">lightbulb</mat-icon> }
+                  @if (device.type === 'ac') { <mat-icon class="text-base">ac_unit</mat-icon> }
+                  @if (device.type === 'lock') { <mat-icon class="text-base">{{device.status === 'locked' ? 'lock' : 'lock_open'}}</mat-icon> }
+                  @if (device.type === 'tv') { <mat-icon class="text-base">tv</mat-icon> }
+                  @if (device.type === 'curtain') { <mat-icon class="text-base">curtains</mat-icon> }
+                }
+                
+                @if (isEditMode()) {
+                  <button (click)="$event.stopPropagation(); changeIcon(device)" class="absolute inset-0 bg-indigo-600/90 flex items-center justify-center rounded">
+                    <mat-icon class="text-[14px] text-white">cached</mat-icon>
+                  </button>
+                }
+              </div>
+              <div>
+                <p class="text-xs font-semibold tracking-tight">{{ device.name }}</p>
+                <p class="text-[10px] text-slate-500 font-mono tracking-wider uppercase mt-0.5">{{ device.location }}</p>
+              </div>
+            </div>
+            
+            <div class="flex flex-col items-end gap-1">
+              <span 
+                class="text-[9px] px-2 py-0.5 rounded font-bold uppercase tracking-tighter"
+                [class.bg-indigo-500/20]="device.status === 'on' || device.status === 'unlocked' || device.status === 'open'"
+                [class.text-indigo-400]="device.status === 'on' || device.status === 'unlocked' || device.status === 'open'"
+                [class.bg-slate-800]="device.status !== 'on' && device.status !== 'unlocked' && device.status !== 'open'"
+                [class.text-slate-500]="device.status !== 'on' && device.status !== 'unlocked' && device.status !== 'open'"
+              >
+                {{ device.status }}
+              </span>
+              @if (device.energyUsage) {
+                <span class="text-[9px] font-mono text-indigo-500/50 leading-none">{{ device.energyUsage }}W</span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="mt-8 p-4 bg-indigo-950/20 border border-indigo-900/30 rounded backdrop-blur-sm animate-float">
+        <p class="text-[10px] uppercase text-indigo-400 font-bold mb-3 tracking-widest flex justify-between">
+          NLP ENGINE STATUS
+          <span class="text-slate-500 font-normal">75%</span>
+        </p>
+        <div class="h-1 bg-slate-800 rounded-full overflow-hidden">
+          <div class="h-full bg-indigo-500 transition-all duration-1000" [style.width]="isAiProcessing() ? '100%' : '75%'"></div>
+        </div>
+        <p class="text-[9px] mt-2 text-slate-500 italic font-mono flex items-center gap-2">
+          <mat-icon class="text-[10px] w-auto h-auto">auto_awesome</mat-icon>
+          Model: Gemini-1.5-Flash
+        </p>
+      </div>
+    </section>
+
+    <!-- Center Column: Interface Core -->
+    <section class="md:col-span-6 flex flex-col items-center justify-center relative min-h-[450px]">
+      <!-- Geometric Orbs Decoration -->
+      <div class="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
+        <div class="w-[300px] h-[300px] md:w-[500px] md:h-[500px] border-2 border-slate-700 rounded-full"></div>
+        <div class="absolute w-[250px] h-[250px] md:w-[400px] md:h-[400px] border-2 border-slate-700 rounded-full"></div>
+        <div class="absolute w-[200px] h-[200px] md:w-[300px] md:h-[300px] border-2 border-slate-700 rounded-full"></div>
+      </div>
+      
+      <div class="relative flex flex-col items-center justify-center w-full">
+        <!-- Visualizer -->
+        <button 
+          (click)="startVoiceCommand()"
+          [disabled]="isAiProcessing()"
+          class="relative flex items-center justify-center w-56 h-56 md:w-72 md:h-72 scale-button cursor-pointer group outline-none focus:ring-2 focus:ring-indigo-500/20 rounded-full"
+        >
+          <div 
+            class="absolute w-full h-full border-4 border-indigo-500/5 rounded-full transition-all duration-700 group-hover:border-indigo-500/20"
+            [class.animate-pulse]="speech.isListening()"
+            [class.border-indigo-500/30]="speech.isListening()"
+          ></div>
+          <div class="absolute w-[88%] h-[88%] border border-slate-800/50 rounded-full flex items-center justify-center">
+             <div 
+               class="w-20 h-20 md:w-24 md:h-24 bg-indigo-600 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(79,70,229,0.3)] transition-all duration-500 relative overflow-hidden"
+               [class.scale-110]="speech.isListening()"
+               [class.animate-pulse]="isAiProcessing()"
+             >
+               @if (isAiProcessing()) {
+                 <mat-icon class="text-white animate-spin">autorenew</mat-icon>
+               } @else {
+                 <mat-icon class="text-white text-3xl md:text-5xl transition-transform group-hover:scale-110 duration-500">
+                    {{ speech.isListening() ? 'graphic_eq' : 'mic' }}
+                 </mat-icon>
+               }
+             </div>
+          </div>
+
+          <!-- Dynamic Visualizer Bars (Left) -->
+          <div class="absolute inset-y-0 left-0 hidden md:flex items-center gap-1.5 opacity-30 pr-12">
+            <div class="w-1 rounded-full bg-indigo-500/40 transition-all duration-300" [style.height]="speech.isListening() ? '32px' : '8px'"></div>
+            <div class="w-1 rounded-full bg-indigo-500/60 transition-all duration-300" [style.height]="speech.isListening() ? '56px' : '16px'"></div>
+            <div class="w-1 rounded-full bg-indigo-400 transition-all duration-300" [style.height]="speech.isListening() ? '96px' : '24px'"></div>
+          </div>
+          <!-- Dynamic Visualizer Bars (Right) -->
+          <div class="absolute inset-y-0 right-0 hidden md:flex items-center gap-1.5 opacity-30 pl-12">
+            <div class="w-1 rounded-full bg-indigo-400 transition-all duration-300" [style.height]="speech.isListening() ? '96px' : '24px'"></div>
+            <div class="w-1 rounded-full bg-indigo-500/60 transition-all duration-300" [style.height]="speech.isListening() ? '56px' : '16px'"></div>
+            <div class="w-1 rounded-full bg-indigo-500/40 transition-all duration-300" [style.height]="speech.isListening() ? '32px' : '8px'"></div>
+          </div>
+        </button>
+
+        <div class="mt-14 text-center w-full max-w-xl px-4">
+          <p class="text-indigo-400 font-mono text-[10px] tracking-[0.4em] uppercase mb-5 transition-all flex items-center justify-center gap-3" [class.opacity-40]="!speech.isListening() && !isAiProcessing()">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500" [class.animate-ping]="speech.isListening()"></span>
+            {{ speech.isListening() ? '[ LISTENING ]' : isAiProcessing() ? '[ PROCESSING ]' : '[ STANDBY_MODE ]' }}
+          </p>
+          
+          <h3 class="text-2xl md:text-4xl font-light italic leading-tight text-slate-100 min-h-[1.2em] transition-all duration-500 px-6">
+            {{ speech.lastTranscription() ? '"' + speech.lastTranscription() + '"' : 'Click the core to command terminal' }}
+          </h3>
+          
+          @if (errorMessage()) {
+            <p class="mt-6 text-[10px] text-rose-400 bg-rose-500/10 px-4 py-2 rounded-sm border border-rose-500/20 uppercase tracking-widest font-mono">
+              Process Error: {{ errorMessage() }}
+            </p>
+          }
+          
+          <div class="mt-10 pt-8 border-t border-slate-900 flex justify-center gap-8 text-slate-600 font-mono text-[9px] uppercase tracking-[0.3em]">
+            <span>Confidence Index: {{ speech.lastTranscription() ? '0.984' : '0.000' }}</span>
+            <span>Entropy: 0.122</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Command Logic -->
+    <section class="md:col-span-3 space-y-8">
+      <div>
+        <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-5 flex items-center gap-2">
+          <mat-icon class="text-xs">terminal</mat-icon> Algorithm Logic
+        </h2>
+        <div class="space-y-3 font-mono text-[10px]">
+          @if (commandHistory().length > 0) {
+            <div class="p-4 bg-slate-900/60 rounded border border-slate-800 backdrop-blur-md">
+              <p class="text-emerald-400 mb-1 flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                DETECTED_INTENT: match_found
+              </p>
+              <div class="pl-3.5 space-y-1 mt-2 text-slate-500">
+                <p>TARGET: {{ commandHistory()[0].action }}</p>
+                <p>ORIGIN: voice_stt_engine</p>
+              </div>
+              <p class="text-[9px] text-indigo-500/60 mt-4 font-bold border-t border-slate-800 pt-3 flex justify-between">
+                TIMESTAMP: {{ commandHistory()[0].time | date:'HH:mm:ss:SSS' }}
+                <span>SECURE</span>
+              </p>
+            </div>
+            <div class="p-4 bg-slate-900 p-3 rounded border border-slate-800/50">
+              <p class="text-indigo-400 font-bold uppercase mb-2">Executable Chain:</p>
+              <ul class="space-y-1.5 text-slate-500 list-none">
+                <li class="flex items-center gap-2 italic">1. Auth Context: <span class="text-emerald-500">VALID</span></li>
+                <li class="flex items-center gap-2 italic">2. Token Check: <span class="text-emerald-500">SECURE</span></li>
+                <li class="flex items-center gap-2 text-indigo-300 animate-pulse">3. Pushing State...</li>
+              </ul>
+            </div>
+          } @else {
+            <div class="p-8 border border-dashed border-slate-800/40 rounded-sm flex flex-col items-center justify-center text-slate-700 grayscale opacity-40">
+              <mat-icon class="text-3xl mb-3">memory</mat-icon>
+              <span class="text-[9px] tracking-widest">AWAITING_INPUT</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div>
+        <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-5 flex items-center gap-2">
+          <mat-icon class="text-xs">history</mat-icon> Event Log
+        </h2>
+        <div class="space-y-5 max-h-[35vh] overflow-y-auto pr-3 custom-scrollbar">
+          @for (log of commandHistory(); track $index) {
+            <div #logItem class="flex gap-4 group">
+              <div class="w-0.5 bg-slate-800 group-hover:bg-indigo-500 transition-colors rounded-full h-auto"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex justify-between items-start mb-1">
+                   <p class="text-[11px] font-bold text-slate-300 truncate tracking-tight pr-2">{{ log.action }}</p>
+                   <p class="text-[9px] text-slate-600 font-mono">{{ log.time | date:'HH:mm:ss' }}</p>
+                </div>
+                <p class="text-[10px] text-slate-500 font-mono italic leading-relaxed truncate group-hover:text-slate-400 transition-colors">"{{ log.text }}"</p>
+              </div>
+            </div>
+          }
+          @if (commandHistory().length === 0) {
+            <div class="flex flex-col items-center py-10 opacity-20 grayscale">
+              <mat-icon class="text-3xl mb-2">inbox</mat-icon>
+              <p class="text-[10px] tracking-widest uppercase">Null Records</p>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer: Technical Bar -->
+  <footer class="mt-12 border-t border-slate-900 pt-8 flex flex-col md:flex-row justify-between items-center text-[9px] text-slate-600 font-mono gap-6 uppercase tracking-[0.3em]">
+    <div class="flex flex-wrap justify-center gap-8">
+      <span class="flex items-center gap-1.5"><mat-icon class="text-[10px] h-auto w-auto">verified_user</mat-icon> Enc: AES-256-GCM / TLS 1.3</span>
+      <span class="flex items-center gap-1.5"><mat-icon class="text-[10px] h-auto w-auto">devices_other</mat-icon> Pro: Matter 1.1 / Zigbee 3.0</span>
+      <span class="hidden lg:inline">Node: cloud-edge-west-01</span>
+    </div>
+    <div class="flex gap-8 items-center bg-slate-900/40 px-5 py-2.5 rounded-full border border-slate-800">
+      <span class="text-indigo-400 font-bold">Neural Learning: Active</span>
+      <div class="w-10 h-3 bg-indigo-950/40 rounded-full relative border border-indigo-900/30 overflow-hidden">
+        <div class="absolute inset-y-0 left-0 w-2/3 bg-indigo-500 shadow-[0_0_8px_#6366f1] animate-pulse"></div>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<style>
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 2px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #4f46e5;
+  }
+</style>

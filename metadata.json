@@ -1,0 +1,12 @@
+{
+  "name": "Remix: SmartVoice Home",
+  "description": "ระบบควบคุมบ้านอัจฉริยะสั่งงานด้วยเสียงภาษาไทย ขับเคลื่อนด้วย AI (Gemini)",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "Voice Control",
+    "Smart Automation",
+    "AI Intent Parsing"
+  ]
+}
